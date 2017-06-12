@@ -24,7 +24,11 @@ public class ImageFrameProxy implements WorkHandler.WorkMessageProxy {
     private int width;
     private int height;
     private boolean isLoading;
+    private WorkHandler workHandler;
 
+    public ImageFrameProxy() {
+        workHandler = new WorkHandler("ADB");
+    }
 
     private ImageCache imageCache;
     private Handler handler = new Handler(Looper.getMainLooper()) {
@@ -33,13 +37,19 @@ public class ImageFrameProxy implements WorkHandler.WorkMessageProxy {
             if (onImageLoadListener != null) {
                 onImageLoadListener.onImageLoad(bitmapDrawable);
             }
-            switch (msg.what) {
-                case RES:
-                    load((int[]) msg.obj);
-                    break;
-                case FILE:
-                    load((File[]) msg.obj);
-                    break;
+            if (workHandler != null) {
+                synchronized (this) {
+                    if (workHandler != null) {
+                        switch (msg.what) {
+                            case RES:
+                                load((int[]) msg.obj);
+                                break;
+                            case FILE:
+                                load((File[]) msg.obj);
+                                break;
+                        }
+                    }
+                }
             }
 
         }
@@ -126,7 +136,7 @@ public class ImageFrameProxy implements WorkHandler.WorkMessageProxy {
             this.onImageLoadListener = onPlayFinish;
             index = 0;
             frameTime = 1000f / fps + 0.5f;
-            WorkHandler.getInstance().addMessageProxy(this);
+            workHandler.addMessageProxy(this);
             load(files);
         }
 
@@ -170,7 +180,7 @@ public class ImageFrameProxy implements WorkHandler.WorkMessageProxy {
             this.onImageLoadListener = onPlayFinish;
             index = 0;
             frameTime = 1000f / fps + 0.5f;
-            WorkHandler.getInstance().addMessageProxy(this);
+            workHandler.addMessageProxy(this);
             load(resArray);
         }
 
@@ -194,8 +204,7 @@ public class ImageFrameProxy implements WorkHandler.WorkMessageProxy {
      * stop play frame
      */
     public void stop() {
-        WorkHandler.onDestory();
-        WorkHandler.getInstance().getHanler().removeCallbacksAndMessages(null);
+        workHandler.onDestory();
         handler.removeCallbacksAndMessages(null);
         resources = null;
         isLoading = false;
@@ -205,14 +214,14 @@ public class ImageFrameProxy implements WorkHandler.WorkMessageProxy {
         Message message = Message.obtain();
         message.obj = files;
         message.what = FILE;
-        WorkHandler.getInstance().getHanler().sendMessage(message);
+        workHandler.getHanler().sendMessage(message);
     }
 
     private void load(@RawRes int[] res) {
         Message message = Message.obtain();
         message.obj = res;
         message.what = RES;
-        WorkHandler.getInstance().getHanler().sendMessage(message);
+        workHandler.getHanler().sendMessage(message);
     }
 
 
